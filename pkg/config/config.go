@@ -34,8 +34,9 @@ func initServerConfig() {
 
 func initESConfig() {
 	esConfig := Config.ES
-	esConfig.Host = viper.GetString("es.host")
-	esConfig.Port = viper.GetString("es.port")
+	esConfig.Addresses = viper.GetStringSlice("es.addresses")
+	esConfig.Username = viper.GetString("es.username")
+	esConfig.Password = viper.GetString("es.password")
 }
 
 func InitConfig() {

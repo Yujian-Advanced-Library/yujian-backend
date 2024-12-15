@@ -411,3 +411,38 @@ func SearchArticlesWithScores[T model.EsModel](ctx context.Context, indexName st
 
 	return items, nil
 }
+
+func GetContentById(ctx context.Context, indexName, id string) (string, error) {
+	// 根据documentId和indexName查询文章
+	res, err := esClient.Get(indexName, id)
+	if err != nil {
+		log.GetLogger().Error("查询文章失败: %v", err)
+		return "", err
+	}
+	defer res.Body.Close()
+
+	if res.IsError() {
+		var e map[string]interface{}
+		if err := json.NewDecoder(res.Body).Decode(&e); err != nil {
+			log.GetLogger().Error("解析错误响应失败: %v", err)
+			return "", err
+		}
+		log.GetLogger().Error("Elasticsearch错误: %v", e)
+		return "", err
+	}
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(res.Body).Decode(&result); err != nil {
+		log.GetLogger().Error("解析响应失败: %v", err)
+		return "", err
+	}
+
+	source := result["_source"]
+	content, ok := source.(map[string]interface{})["content"].(string)
+	if !ok {
+		log.GetLogger().Error("获取content字段失败")
+		return "", errors.New("获取content字段失败")
+	}
+
+	return content, nil
+}
