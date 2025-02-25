@@ -61,55 +61,6 @@ func (bookInfoDTO *BookInfoDTO) TransformToDO() *BookInfoDO {
 }
 
 
-// BookCommentDTO 书评DTO
-type BookCommentDTO struct {
-	Id             int64   `json:"id"`
-	BookId         int64   `json:"book_id"`
-	Content        string  `json:"content"`
-	Like           int64   `json:"like"`
-	Dislike        int64   `json:"dislike"`
-	LikeUserIds    []int64 `json:"like_user_ids"`
-	DislikeUserIds []int64 `json:"dislike_user_ids"`
-}
-
-// BookCommentDO 书评数据库对象
-type BookCommentDO struct {
-	Id             int64  `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
-	BookId         int64  `gorm:"column:book_id" json:"book_id"`
-	Content        string `gorm:"column:content" json:"content"`
-	Like           int64  `gorm:"column:like" json:"like"`
-	Dislike        int64  `gorm:"column:dislike" json:"dislike"`
-	LikeUserIds    string `gorm:"column:like_user_ids" json:"like_user_ids"`
-	DislikeUserIds string `gorm:"column:dislike_user_ids" json:"dislike_user_ids"`
-}
-
-// TransformToDO 将BookCommentDTO转换为BookCommentDO
-func (bookCommentDTO *BookCommentDTO) Transfer() *BookCommentDO {
-	return &BookCommentDO{
-		Id:             bookCommentDTO.Id,
-		BookId:         bookCommentDTO.BookId,
-		Content:        bookCommentDTO.Content,
-		Like:           bookCommentDTO.Like,
-		Dislike:        bookCommentDTO.Dislike,
-		LikeUserIds:    utils.MustToJSONString(bookCommentDTO.LikeUserIds),
-		DislikeUserIds: utils.MustToJSONString(bookCommentDTO.DislikeUserIds),
-	}
-}
-
-// TransformToDTO 将BookCommentDO转换为BookCommentDTO
-func (bookCommentDO *BookCommentDO) TransformToDTO() *BookCommentDTO {
-	return &BookCommentDTO{
-		Id:             bookCommentDO.Id,
-		BookId:         bookCommentDO.BookId,
-		Content:        bookCommentDO.Content,
-		Like:           bookCommentDO.Like,
-		Dislike:        bookCommentDO.Dislike,
-		LikeUserIds:    utils.MustParseJSONString[[]int64](bookCommentDO.LikeUserIds),
-		DislikeUserIds: utils.MustParseJSONString[[]int64](bookCommentDO.DislikeUserIds),
-	}
-}
-
-
 // 搜索请求结构体
 type BookSearchRequest struct {
 	Keyword  string `json:"Keyword"`  //关键词
@@ -122,3 +73,91 @@ type BookSearchRequest struct {
 type SearchResponse struct {
 	Books []BookInfoDTO `json:"books"`
 }
+
+// BookDetailResponse 图书详情返回
+type BookDetailResponse struct {
+	BaseResp
+	Data BookInfoDTO `json:"data"` // 图书详情数据
+}
+
+// BookCommentDTO 书评DTO
+type BookCommentDTO struct {
+	Id          int64     `json:"id"`           //书评id
+	BookId      int64     `json:"book_id"`      //书的id
+	PublisherId int64     `json:"publisher_id"` //发布者id
+	Content     string    `json:"content"`      //书评内容
+	Score       float64   `json:"score"`        //评分
+	PostTime    time.Time `json:"post_time"`    //发布时间
+	Like        int64     `json:"like"`         //赞数
+	Dislike     int64     `json:"dislike"`      //踩数
+}
+
+// BookCommentDO 书评数据库对象
+type BookCommentDO struct {
+	Id          int64     `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	BookId      int64     `gorm:"column:book_id" json:"book_id"`
+	PublisherId int64     `gorm:"column:publisher_id" json:"publisher_id"`
+	Content     string    `gorm:"column:content" json:"content"`
+	Score       float64   `gorm:"column:score" json:"score"`
+	PostTime    time.Time `gorm:"column:post_time" json:"post_time"`
+	Like        int64     `gorm:"column:like" json:"like"`
+	Dislike     int64     `gorm:"column:dislike" json:"dislike"`
+}
+
+// TransformToDO 将BookCommentDTO转换为BookCommentDO
+func (bookCommentDTO *BookCommentDTO) Transfer() *BookCommentDO {
+	return &BookCommentDO{
+		Id:          bookCommentDTO.Id,
+		BookId:      bookCommentDTO.BookId,
+		PublisherId: bookCommentDTO.PublisherId,
+		Content:     bookCommentDTO.Content,
+		Score:       bookCommentDTO.Score,
+		PostTime:    bookCommentDTO.PostTime,
+		Like:        bookCommentDTO.Like,
+		Dislike:     bookCommentDTO.Dislike,
+	}
+}
+
+// TransformToDTO 将BookCommentDO转换为BookCommentDTO
+func (bookCommentDO *BookCommentDO) TransformToDTO() *BookCommentDTO {
+	return &BookCommentDTO{
+		Id:          bookCommentDO.Id,
+		BookId:      bookCommentDO.BookId,
+		PublisherId: bookCommentDO.PublisherId,
+		Content:     bookCommentDO.Content,
+		Score:       bookCommentDO.Score,
+		PostTime:    bookCommentDO.PostTime,
+		Like:        bookCommentDO.Like,
+		Dislike:     bookCommentDO.Dislike,
+	}
+}
+
+
+// CreatReviewRequest 书评发布请求结构体
+type CreatReviewRequest struct {
+	BookId      int64   `json:"book_id"`      //图书id
+	Content     string  `json:"content"`      //书评内容
+	Score       float64 `json:"score"`        //评分
+	PublisherId int64   `json:"publisher_id"` //111发布者id，这个接口文档里没有，但是不是需要啊，我不确定因为我看书评结构里存这个了
+}
+
+// CreatReviewResponse 书评发布返回结构体
+type CreatReviewResponse struct {
+	BaseResp
+}
+
+
+// ReviewsResponse 获取书评的返回结构体
+type ReviewsResponse struct {
+	BaseResp
+	Reviews []BookCommentDTO `json:"book_reviews"`
+}
+
+
+// ClickLikeResponse 点赞/踩返回结构体
+type ClickLikeResponse struct {
+	BaseResp
+	Like    int64 `json:"like"`
+	Dislike int64 `json:"dislike"`
+}
+
