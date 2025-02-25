@@ -36,4 +36,8 @@ func SetupRouter(r *gin.Engine) {
 		reviewsGroup.POST("/:reviewId/like", book.LikeonReviews) //书评点赞/踩接口
 	}
 
+	//其他
+	r.GET("/api/captcha/get", other.GetCaptcha()) //验证码获取
+	r.GET("/api/messages", other.GetNews())       //消息获取
+
 }
