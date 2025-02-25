@@ -1,9 +1,10 @@
 package auth
 
 import (
-	"errors"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"net/http"
+	"time"
 	"yujian-backend/pkg/db"
 	"yujian-backend/pkg/model"
 )
