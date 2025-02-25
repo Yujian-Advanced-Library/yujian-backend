@@ -2,11 +2,14 @@ package book
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v4"
 	"net/http"
 	"strconv"
 	"yujian-backend/pkg/db"
 	"yujian-backend/pkg/model"
 )
+
+var jwtKey = []byte("your_secret_key")
 
 // CreatReview 书评发布
 func CreatReview(c *gin.Context) {
@@ -100,7 +103,69 @@ func GetReviews(c *gin.Context) {
 // ClickLike 点赞处理函数
 func ClickLike(c *gin.Context) {
 	//验证登录凭证
+	//验证登录凭证
+	// 从请求头中提取 JWT 令牌
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		c.JSON(http.StatusUnauthorized, model.ClickLikeResponse{
+			BaseResp: model.BaseResp{
+				Error:  nil,
+				Code:   http.StatusUnauthorized,
+				ErrMsg: "Authorization header is required",
+			},
+		})
+		return
+	}
 
+	// 检查 Authorization 头的格式
+	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+	if tokenString == authHeader {
+		c.JSON(http.StatusUnauthorized, model.ClickLikeResponse{
+			BaseResp: model.BaseResp{
+				Error:  nil,
+				Code:   http.StatusUnauthorized,
+				ErrMsg: "Invalid token format",
+			},
+		})
+		return
+	}
+
+	// 解析并验证 JWT 令牌
+	claims := &model.Claims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return jwtKey, nil
+	})
+	if err != nil {
+		if err == jwt.ErrSignatureInvalid {
+			c.JSON(http.StatusUnauthorized, model.ClickLikeResponse{
+				BaseResp: model.BaseResp{
+					Error:  err,
+					Code:   http.StatusUnauthorized,
+					ErrMsg: "Invalid token signature",
+				},
+			})
+			return
+		}
+		c.JSON(http.StatusUnauthorized, model.ClickLikeResponse{
+			BaseResp: model.BaseResp{
+				Error:  err,
+				Code:   http.StatusUnauthorized,
+				ErrMsg: "Invalid or expired token",
+			},
+		})
+		return
+	}
+	if !token.Valid {
+		c.JSON(http.StatusUnauthorized, model.ClickLikeResponse{
+			BaseResp: model.BaseResp{
+				Error:  nil,
+				Code:   http.StatusUnauthorized,
+				ErrMsg: "Invalid token",
+			},
+		})
+		return
+	}
+	//jwt的部分还是不怎么确定
 	reviewRepository := db.GetBookRepository()
 	reviewId, err := strconv.ParseInt(c.Param("reviewId"), 10, 64)
 	if err != nil { //绑定失败
