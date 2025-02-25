@@ -23,3 +23,8 @@ type RegisterResponseDTO struct {
 	Token string  `json:"token"`
 	User  UserDTO `json:"user"`
 }
+
+type Claims struct {
+	Username string `json:"username"`
+	jwt.RegisteredClaims
+}
