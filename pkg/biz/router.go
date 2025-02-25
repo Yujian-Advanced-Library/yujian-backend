@@ -28,4 +28,12 @@ func SetupRouter(r *gin.Engine) {
 		bookGroup.GET("/:bookId", book.GetBookDetail) // 图书详情获取
 	}
 
+	//书评相关路由
+	reviewsGroup := r.Group("/api/reviews")
+	{
+		reviewsGroup.POST("/post", book.PostReview)              //书评发布接口
+		reviewsGroup.GET("/:bookId", book.GetReviews)            //书评获取接口
+		reviewsGroup.POST("/:reviewId/like", book.LikeonReviews) //书评点赞/踩接口
+	}
+
 }
