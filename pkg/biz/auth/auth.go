@@ -8,9 +8,18 @@ import (
 	"yujian-backend/pkg/model"
 )
 
+
+// jwt密钥
+var jwtKey = []byte("your_secret_key")
+
+// Claims 定义jwt的claims结构
+type Claims struct {
+	Username string `json:"username"`
+	jwt.RegisteredClaims
+}
+
 // UserLogin 返回一个处理用户登录的中间件函数
 // 该函数验证用户身份信息，并在成功验证后返回一个令牌
-
 func UserLogin() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var err error
@@ -30,7 +39,6 @@ func UserLogin() gin.HandlerFunc {
 			})
 			return
 		}
-
 		// 查数据库
 		var userDTO *model.UserDTO
 		if userDTO, err = userRepository.GetUserByName(authInfo.UserName); err != nil {
@@ -38,33 +46,53 @@ func UserLogin() gin.HandlerFunc {
 			c.JSON(http.StatusUnauthorized, model.LoginResponseDTO{
 				BaseResp: model.BaseResp{
 					Error:  err,
-					Code:   http.StatusInternalServerError, //
-					ErrMsg: "invalid password",
+					Code:   http.StatusUnauthorized,
+					ErrMsg: "user not found",
 				},
 			})
 			return
 		} else {
-			// todo[xinhui] 用JWT来解决
-
+			// todo 用JWT来解决
 			// 验证用户密码
 			if userDTO.Password == authInfo.Password {
 				// 当密码匹配时，返回包含令牌和用户信息的成功响应
+				expirationTime := time.Now().Add(24 * time.Hour) //Token有效期24h
+				claims := &Claims{
+					Username: authInfo.UserName,
+					RegisteredClaims: jwt.RegisteredClaims{
+						ExpiresAt: jwt.NewNumericDate(expirationTime),
+					},
+				}
+				token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+				tokenString, err := token.SignedString(jwtKey)
+				if err != nil {
+					// 如果生成 Token 失败，返回错误响应
+					c.JSON(http.StatusInternalServerError, model.LoginResponseDTO{
+						BaseResp: model.BaseResp{
+							Error:  err,
+							Code:   http.StatusInternalServerError,
+							ErrMsg: "failed to generate token",
+						},
+					})
+					return
+				} //成功
 				okResp := model.LoginResponseDTO{
-					Token: "123",
+					Token: tokenString,
 					User:  *userDTO,
 					BaseResp: model.BaseResp{
-						Error:  err,
+						Error:  nil,
 						Code:   http.StatusOK,
-						ErrMsg: "invalid password",
+						ErrMsg: "",
 					},
 				}
 				c.JSON(http.StatusOK, okResp)
 				return
+
 			} else {
 				// 当密码不匹配时，返回错误响应
 				invalidPassWord := model.LoginResponseDTO{
 					BaseResp: model.BaseResp{
-						Error:  err,
+						Error:  nil,
 						Code:   http.StatusUnauthorized,
 						ErrMsg: "invalid password",
 					},
@@ -75,6 +103,7 @@ func UserLogin() gin.HandlerFunc {
 		}
 	}
 }
+
 
 // UserRegister 返回一个处理用户注册的中间件函数
 // 该函数接收用户注册信息，并在成功注册后返回一个令牌
@@ -103,7 +132,7 @@ func UserRegister() gin.HandlerFunc {
 		if registerInfo.Password != registerInfo.ConfirmPassword {
 			passwordNotMatch := model.RegisterResponseDTO{
 				BaseResp: model.BaseResp{
-					Error:  errors.New("password and confirm password do not match"),
+					Error:  err,
 					Code:   http.StatusBadRequest,
 					ErrMsg: "Password and confirm password do not match",
 				},
@@ -128,7 +157,7 @@ func UserRegister() gin.HandlerFunc {
 			// 当用户名已存在时，返回错误响应
 			userExists := model.RegisterResponseDTO{
 				BaseResp: model.BaseResp{
-					Error:  errors.New("user already exists"),
+					Error:  err,
 					Code:   http.StatusConflict,
 					ErrMsg: "User already exists",
 				},
@@ -140,7 +169,7 @@ func UserRegister() gin.HandlerFunc {
 		// 创建新用户
 		newUser := &model.UserDTO{
 			Name:     registerInfo.UserName,
-			Password: registerInfo.Password, // 注意：在实际应用中，应存储加密后的密码
+			Password: registerInfo.Password,
 		}
 		if id, err := userRepository.CreateUser(newUser); err != nil {
 			// 当用户创建失败时，返回错误响应
@@ -157,19 +186,42 @@ func UserRegister() gin.HandlerFunc {
 			newUser.Id = id
 		}
 
+		//生成jwt令牌
+		expirationTime := time.Now().Add(24 * time.Hour) // 令牌有效期为 24 小时
+		claims := &Claims{
+			Username: registerInfo.UserName,
+			RegisteredClaims: jwt.RegisteredClaims{
+				ExpiresAt: jwt.NewNumericDate(expirationTime),
+			},
+		}
+
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+		tokenString, err := token.SignedString(jwtKey)
+		if err != nil {
+			//生成令牌失败
+			tokenFailed := model.RegisterResponseDTO{
+				BaseResp: model.BaseResp{
+					Error:  err,
+					Code:   http.StatusInternalServerError,
+					ErrMsg: "Failed to generate token",
+				},
+			}
+			c.JSON(http.StatusInternalServerError, tokenFailed)
+			return
+		}
+
 		// 注册成功，返回包含令牌和用户信息的成功响应
 		okResp := model.RegisterResponseDTO{
 			BaseResp: model.BaseResp{
 				Error:  nil,
 				Code:   http.StatusOK,
-				ErrMsg: "User registered successfully",
+				ErrMsg: "",
 			},
-
-			Token: "123",
-			// 111111我不太理解令牌这块
-			User: *newUser,
+			Token: tokenString,
+			User:  *newUser,
 		}
 		c.JSON(http.StatusOK, okResp)
 	}
 }
+
 
