@@ -49,12 +49,12 @@ func (r *BookRepository) DeleteBook(id int64) error {
 // 书评
 
 // CreateBookComment 创建书评
-func (r *BookRepository) CreateBookComment(commentDTO *model.BookCommentDTO) (int64, error) {
+func (r *BookRepository) CreateBookComment(commentDTO *model.BookCommentDTO) error {
 	commentDO := commentDTO.Transfer()
 	if err := r.DB.Create(commentDO).Error; err != nil {
-		return 0, err
+		return err
 	}
-	return commentDO.Id, nil
+	return nil
 }
 
 // GetBookCommentById 根据书评ID获取书评
