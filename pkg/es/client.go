@@ -16,7 +16,7 @@ import (
 var es *elasticsearch.Client
 
 // ensureIndex 确保索引存在
-func ensureIndex(ctx context.Context, indexName string) error {
+func ensureIndex(indexName string) error {
 	// 检查索引是否存在
 	exists, err := es.Indices.Exists([]string{indexName})
 	if err != nil {
@@ -44,7 +44,7 @@ func ensureIndex(ctx context.Context, indexName string) error {
 func Create(ctx context.Context, item model.EsModel) error {
 	// 先确保索引存在且打开
 	index := item.GetIndexName()
-	if err := ensureIndex(ctx, index); err != nil {
+	if err := ensureIndex(index); err != nil {
 		return fmt.Errorf("确保索引存在时出错: %v", err)
 	}
 

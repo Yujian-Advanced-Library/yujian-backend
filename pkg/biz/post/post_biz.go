@@ -102,6 +102,24 @@ func (b *PostBiz) CreatePost(req *model.CreatePostRequestDTO) *model.CreatePostR
 }
 
 // GetPostByTimeLine 根据时间线获取帖子(不会获取内容,只获取帖子信息)
+func GetPostByTimeLine() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req model.GetPostByTimeLineRequestDTO
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		resp := postBizInstance.GetPostByTimeLine(&req)
+		if resp.Code != model.Success {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": resp.Error.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, resp)
+		return
+	}
+}
+
 func (b *PostBiz) GetPostByTimeLine(req *model.GetPostByTimeLineRequestDTO) *model.GetPostByTimeLineResponseDTO {
 	resp := &model.GetPostByTimeLineResponseDTO{
 		BaseResp: model.BaseResp{
@@ -130,6 +148,24 @@ func (b *PostBiz) GetPostByTimeLine(req *model.GetPostByTimeLineRequestDTO) *mod
 }
 
 // GetPostByUserId 根据用户ID获取帖子
+func GetPostByUserId() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req model.GetPostByUserIdRequestDTO
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		resp := postBizInstance.GetPostByUserId(&req)
+		if resp.Code != model.Success {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": resp.Error.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, resp)
+		return
+	}
+}
+
 func (b *PostBiz) GetPostByUserId(req *model.GetPostByUserIdRequestDTO) *model.GetPostByUserIdResponseDTO {
 	resp := &model.GetPostByUserIdResponseDTO{
 		BaseResp: model.BaseResp{
@@ -158,6 +194,24 @@ func (b *PostBiz) GetPostByUserId(req *model.GetPostByUserIdRequestDTO) *model.G
 }
 
 // GetPostById 根据帖子ID获取帖子
+func GetPostById() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req model.GetPostByIdRequestDTO
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		resp := postBizInstance.GetPostById(&req)
+		if resp.Code != model.Success {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": resp.Error.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, resp)
+		return
+	}
+}
+
 func (b *PostBiz) GetPostById(req *model.GetPostByIdRequestDTO) *model.GetPostByIdResponseDTO {
 	resp := &model.GetPostByIdResponseDTO{
 		BaseResp: model.BaseResp{
@@ -186,6 +240,24 @@ func (b *PostBiz) GetPostById(req *model.GetPostByIdRequestDTO) *model.GetPostBy
 }
 
 // GetPostContentByPostId	 获取帖子内容
+func GetPostContentByPostId() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req model.GetPostContentByPostIdRequestDTO
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		resp := postBizInstance.GetPostContentByPostId(&req)
+		if resp.Code != model.Success {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": resp.Error.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, resp)
+		return
+	}
+}
+
 func (b *PostBiz) GetPostContentByPostId(req *model.GetPostContentByPostIdRequestDTO) *model.GetPostContentByPostIdResponseDTO {
 	resp := &model.GetPostContentByPostIdResponseDTO{
 		BaseResp: model.BaseResp{
