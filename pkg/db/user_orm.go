@@ -54,3 +54,14 @@ func (r *UserRepository) UpdateUser(user *model.UserDO) error {
 func (r *UserRepository) DeleteUser(id int64) error {
 	return r.DB.Delete(&model.UserDO{}, id).Error
 }
+
+// PasswordChange 修改密码
+// 接收id和新密码，根据id在数据库中查找，没找到返回err，找到则把其密码更改为新密码
+func (r *UserRepository) PasswordChange(id int64, newPassword string) error {
+	var user model.UserDO
+	if err := r.DB.First(&user, id).Error; err != nil {
+		return err
+	}
+	user.Password = newPassword
+	return r.DB.Save(&user).Error
+}
