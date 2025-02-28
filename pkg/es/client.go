@@ -16,7 +16,7 @@ import (
 var es *elasticsearch.Client
 
 // ensureIndex 确保索引存在
-func ensureIndex(ctx context.Context, indexName string) error {
+func ensureIndex(indexName string) error {
 	// 检查索引是否存在
 	exists, err := es.Indices.Exists([]string{indexName})
 	if err != nil {
@@ -44,7 +44,7 @@ func ensureIndex(ctx context.Context, indexName string) error {
 func Create(ctx context.Context, item model.EsModel) error {
 	// 先确保索引存在且打开
 	index := item.GetIndexName()
-	if err := ensureIndex(ctx, index); err != nil {
+	if err := ensureIndex(index); err != nil {
 		return fmt.Errorf("确保索引存在时出错: %v", err)
 	}
 
@@ -410,4 +410,39 @@ func SearchArticlesWithScores[T model.EsModel](ctx context.Context, indexName st
 	}
 
 	return items, nil
+}
+
+func GetContentById(ctx context.Context, indexName, id string) (string, error) {
+	// 根据documentId和indexName查询文章
+	res, err := esClient.Get(indexName, id)
+	if err != nil {
+		log.GetLogger().Error("查询文章失败: %v", err)
+		return "", err
+	}
+	defer res.Body.Close()
+
+	if res.IsError() {
+		var e map[string]interface{}
+		if err := json.NewDecoder(res.Body).Decode(&e); err != nil {
+			log.GetLogger().Error("解析错误响应失败: %v", err)
+			return "", err
+		}
+		log.GetLogger().Error("Elasticsearch错误: %v", e)
+		return "", err
+	}
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(res.Body).Decode(&result); err != nil {
+		log.GetLogger().Error("解析响应失败: %v", err)
+		return "", err
+	}
+
+	source := result["_source"]
+	content, ok := source.(map[string]interface{})["content"].(string)
+	if !ok {
+		log.GetLogger().Error("获取content字段失败")
+		return "", errors.New("获取content字段失败")
+	}
+
+	return content, nil
 }

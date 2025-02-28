@@ -1,12 +1,16 @@
 package auth
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
+	"errors"
 	"net/http"
 	"time"
+  
 	"yujian-backend/pkg/db"
 	"yujian-backend/pkg/model"
+
+	"github.com/gin-gonic/gin"
+  "github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 
@@ -31,26 +35,26 @@ func UserLogin() gin.HandlerFunc {
 		var authInfo model.LoginRequestDTO
 		if err = c.ShouldBindJSON(&authInfo); err != nil {
 			// 当请求体无法被正确解析时，返回错误响应
-			c.JSON(http.StatusBadRequest, model.LoginResponseDTO{
+			badBody := model.LoginResponseDTO{
 				BaseResp: model.BaseResp{
-					Error:  err,
-					Code:   http.StatusBadRequest,
-					ErrMsg: "invalid request body",
+					Code:  model.InvalidRequestBody,
+					Error: errors.New("invalid request body"),
 				},
-			})
+			}
+			c.JSON(http.StatusBadRequest, badBody)
 			return
 		}
 		// 查数据库
 		var userDTO *model.UserDTO
 		if userDTO, err = userRepository.GetUserByName(authInfo.UserName); err != nil {
 			// 当数据库中找不到指定用户名的用户时，返回错误响应
-			c.JSON(http.StatusUnauthorized, model.LoginResponseDTO{
+			userNotFound := model.LoginResponseDTO{
 				BaseResp: model.BaseResp{
-					Error:  err,
-					Code:   http.StatusUnauthorized,
-					ErrMsg: "user not found",
+					Code:  model.UserNotExists,
+					Error: errors.New("user not found"),
 				},
-			})
+			}
+			c.JSON(http.StatusOK, userNotFound)
 			return
 		} else {
 			// todo 用JWT来解决
@@ -81,9 +85,8 @@ func UserLogin() gin.HandlerFunc {
 					Token: tokenString,
 					User:  *userDTO,
 					BaseResp: model.BaseResp{
-						Error:  nil,
-						Code:   http.StatusOK,
-						ErrMsg: "",
+						Code:  model.Success,
+						Error: nil,
 					},
 				}
 				c.JSON(http.StatusOK, okResp)
@@ -93,9 +96,8 @@ func UserLogin() gin.HandlerFunc {
 				// 当密码不匹配时，返回错误响应
 				invalidPassWord := model.LoginResponseDTO{
 					BaseResp: model.BaseResp{
-						Error:  nil,
-						Code:   http.StatusUnauthorized,
-						ErrMsg: "invalid password",
+						Code:  model.PasswordError,
+						Error: errors.New("invalid password"),
 					},
 				}
 				c.JSON(http.StatusOK, invalidPassWord)
@@ -120,9 +122,8 @@ func UserRegister() gin.HandlerFunc {
 			// 当请求体无法被正确解析时，返回错误响应
 			badBody := model.RegisterResponseDTO{
 				BaseResp: model.BaseResp{
-					Error:  err,
-					Code:   http.StatusBadRequest,
-					ErrMsg: "Invalid request body",
+					Code:  model.InvalidRequestBody,
+					Error: errors.New("invalid request body"),
 				},
 			}
 			c.JSON(http.StatusBadRequest, badBody)
@@ -147,20 +148,18 @@ func UserRegister() gin.HandlerFunc {
 		if existingUser, err = userRepository.GetUserByName(registerInfo.UserName); err != nil {
 			internalErr := model.RegisterResponseDTO{
 				BaseResp: model.BaseResp{
-					Error:  err,
-					Code:   http.StatusInternalServerError,
-					ErrMsg: "Internal server error",
+					Code:  model.InternalError,
+					Error: errors.New("internal server error"),
 				},
 			}
 			c.JSON(http.StatusInternalServerError, internalErr)
 			return
-		} else if err == nil && existingUser != nil {
+		} else if existingUser != nil {
 			// 当用户名已存在时，返回错误响应
 			userExists := model.RegisterResponseDTO{
 				BaseResp: model.BaseResp{
-					Error:  err,
-					Code:   http.StatusConflict,
-					ErrMsg: "User already exists",
+					Code:  model.UserExists,
+					Error: errors.New("user already exists"),
 				},
 			}
 			c.JSON(http.StatusConflict, userExists)
@@ -176,9 +175,8 @@ func UserRegister() gin.HandlerFunc {
 			// 当用户创建失败时，返回错误响应
 			createFailed := model.RegisterResponseDTO{
 				BaseResp: model.BaseResp{
-					Error:  err,
-					Code:   http.StatusInternalServerError,
-					ErrMsg: "Failed to create user",
+					Code:  model.InternalError,
+					Error: errors.New("failed to create user"),
 				},
 			}
 			c.JSON(http.StatusInternalServerError, createFailed)
@@ -220,6 +218,10 @@ func UserRegister() gin.HandlerFunc {
 			},
 			Token: tokenString,
 			User:  *newUser,
+			BaseResp: model.BaseResp{
+				Code:  model.Success,
+				Error: nil,
+			},
 		}
 		c.JSON(http.StatusOK, okResp)
 	}

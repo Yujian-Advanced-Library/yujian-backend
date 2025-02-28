@@ -1,8 +1,11 @@
 package db
 
 import (
-	"gorm.io/gorm"
+	"sort"
+	"time"
 	"yujian-backend/pkg/model"
+
+	"gorm.io/gorm"
 )
 
 var postRepository PostRepository
@@ -25,23 +28,28 @@ func (r *PostRepository) CreatePost(postDTO *model.PostDTO) (int64, error) {
 }
 
 // GetPostById 根据ID获取帖子
-func (r *PostRepository) GetPostById(id int64) (*model.PostDTO, error) {
-	var post model.PostDO
-	if err := r.DB.First(&post, id).Error; err != nil {
+func (r *PostRepository) GetPostById(ids []int64) ([]*model.PostDTO, error) {
+	var post []model.PostDO
+	if err := r.DB.Where("id IN (?)", ids).Find(&post).Error; err != nil {
 		return nil, err
 	}
 
-	userDTO, err := userRepository.GetUserById(post.AuthorId)
-	if err != nil {
-		return nil, err
+	postDTOs := make([]*model.PostDTO, len(post))
+	for i, post := range post {
+		userDTO, err := userRepository.GetUserById(post.AuthorId)
+		if err != nil {
+			return nil, err
+		}
+
+		comments, err := r.GetPostCommentsByPostId(post.Id)
+		if err != nil {
+			return nil, err
+		}
+
+		postDTOs[i] = post.TransformToDTO(userDTO, comments)
 	}
 
-	comments, err := r.GetPostCommentsByPostId(post.Id)
-	if err != nil {
-		return nil, err
-	}
-
-	return post.TransformToDTO(userDTO, comments), nil
+	return postDTOs, nil
 }
 
 // UpdatePost 更新帖子
@@ -107,4 +115,66 @@ func (r *PostRepository) BatchGetPostCommentById(ids []int64) ([]*model.PostComm
 		postCommentDTOs[i] = comment.TransformToDTO()
 	}
 	return postCommentDTOs, nil
+}
+
+// GetPostByTimeLine 根据时间范围获取帖子
+func (r *PostRepository) GetPostByTimeLine(startTime time.Time, endTime time.Time, page int, pageSize int) ([]*model.PostDTO, int64, error) {
+	var posts []*model.PostDO
+	var total int64
+
+	offset := (page - 1) * pageSize
+	if err := r.DB.Model(&model.PostDO{}).Where("edit_time BETWEEN ? AND ?", startTime, endTime).
+		Count(&total).Order("edit_time DESC").Offset(offset).Limit(pageSize).Find(&posts).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// 转换为DTO
+	postDTOs := make([]*model.PostDTO, len(posts))
+	for i, post := range posts {
+		userDTO, err := userRepository.GetUserById(post.AuthorId)
+		if err != nil {
+			return nil, 0, err
+		}
+
+		comments, err := r.GetPostCommentsByPostId(post.Id)
+		if err != nil {
+			return nil, 0, err
+		}
+		postDTOs[i] = post.TransformToDTO(userDTO, comments)
+	}
+
+	// go代码里再排序一次
+	sort.Slice(postDTOs, func(i, j int) bool {
+		return postDTOs[i].EditTime.After(postDTOs[j].EditTime)
+	})
+
+	return postDTOs, total, nil
+}
+
+// GetPostByUserId 根据用户ID获取帖子
+func (r *PostRepository) GetPostByUserId(userId int64, page int, pageSize int) ([]*model.PostDTO, int64, error) {
+	var posts []*model.PostDO
+	var total int64
+
+	offset := (page - 1) * pageSize
+	if err := r.DB.Model(&model.PostDO{}).Where("author_id = ?", userId).
+		Count(&total).Order("edit_time DESC").Offset(offset).Limit(pageSize).Find(&posts).Error; err != nil {
+		return nil, 0, err
+	}
+
+	postDTOs := make([]*model.PostDTO, len(posts))
+	for i, post := range posts {
+		userDTO, err := userRepository.GetUserById(post.AuthorId)
+		if err != nil {
+			return nil, 0, err
+		}
+
+		comments, err := r.GetPostCommentsByPostId(post.Id)
+		if err != nil {
+			return nil, 0, err
+		}
+		postDTOs[i] = post.TransformToDTO(userDTO, comments)
+	}
+
+	return postDTOs, total, nil
 }

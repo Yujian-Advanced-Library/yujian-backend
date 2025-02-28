@@ -6,12 +6,11 @@ import (
 
 // PostDTO 帖子DTO
 type PostDTO struct {
-	Id        int64             `json:"id"`
-	Author    *UserDTO          `json:"author"`
-	Title     string            `json:"title"`
-	ContentId string            `json:"content_id"`
-	EditTime  time.Time         `json:"edit_time"`
-	Comments  []*PostCommentDTO `json:"comments"`
+	Id       int64             `json:"id"`
+	Author   *UserDTO          `json:"author"`
+	Title    string            `json:"title"`
+	EditTime time.Time         `json:"edit_time"`
+	Comments []*PostCommentDTO `json:"comments"`
 }
 
 // TransformToDO 将PostDTO转换为PostDO
@@ -21,7 +20,6 @@ func (p *PostDTO) TransformToDO() *PostDO {
 		AuthorId:   p.Author.Id,
 		AuthorName: p.Author.Name,
 		Title:      p.Title,
-		ContentId:  p.ContentId,
 		EditTime:   p.EditTime,
 	}
 }
@@ -32,7 +30,6 @@ type PostDO struct {
 	AuthorId   int64     `gorm:"column:author_id" json:"author_id"`
 	AuthorName string    `gorm:"column:author_name" json:"author_name"`
 	Title      string    `gorm:"column:title" json:"title"`
-	ContentId  string    `gorm:"column:content_id" json:"content_id"`
 	EditTime   time.Time `gorm:"column:edit_time" json:"edit_time"`
 }
 
@@ -43,12 +40,11 @@ func (p PostDO) TableName() string {
 // TransformToDTO 将PostDO转换为PostDTO
 func (p *PostDO) TransformToDTO(userDTO *UserDTO, comments []*PostCommentDTO) *PostDTO {
 	return &PostDTO{
-		Id:        p.Id,
-		Author:    userDTO,
-		Title:     p.Title,
-		ContentId: p.ContentId,
-		EditTime:  p.EditTime,
-		Comments:  comments,
+		Id:       p.Id,
+		Author:   userDTO,
+		Title:    p.Title,
+		EditTime: p.EditTime,
+		Comments: comments,
 	}
 }
 
@@ -146,4 +142,55 @@ type CreatePostRequestDTO struct {
 type CreatePostResponseDTO struct {
 	BaseResp
 	PostId int64 `json:"post_id"`
+}
+
+// GetPostByTimeLineRequestDTO 获取帖子时间线请求DTO
+type GetPostByTimeLineRequestDTO struct {
+	StartTime time.Time `json:"start_time"`
+	EndTime   time.Time `json:"end_time"`
+	Page      int       `json:"page"`
+	PageSize  int       `json:"page_size"`
+}
+
+// GetPostByTimeLineResponseDTO 获取帖子时间线响应DTO
+type GetPostByTimeLineResponseDTO struct {
+	BaseResp
+	Posts []*PostDTO `json:"posts"`
+	Total int64      `json:"total"`
+}
+
+// GetPostByUserIdRequestDTO 获取用户帖子请求DTO
+type GetPostByUserIdRequestDTO struct {
+	UserId   int64 `json:"user_id"`
+	Page     int   `json:"page"`
+	PageSize int   `json:"page_size"`
+}
+
+// GetPostByUserIdResponseDTO 获取用户帖子响应DTO
+type GetPostByUserIdResponseDTO struct {
+	BaseResp
+	Posts []*PostDTO `json:"posts"`
+	Total int64      `json:"total"`
+}
+
+// GetPostByIdRequestDTO 获取帖子请求DTO
+type GetPostByIdRequestDTO struct {
+	PostId []int64 `json:"post_id"`
+}
+
+// GetPostByIdResponseDTO 获取帖子响应DTO
+type GetPostByIdResponseDTO struct {
+	BaseResp
+	Posts []*PostDTO `json:"posts"`
+}
+
+// GetPostContentByPostIdRequestDTO 获取帖子内容请求DTO
+type GetPostContentByPostIdRequestDTO struct {
+	PostId int64 `json:"post_id"`
+}
+
+// GetPostContentByPostIdResponseDTO 获取帖子内容响应DTO
+type GetPostContentByPostIdResponseDTO struct {
+	BaseResp
+	Content string `json:"content"`
 }
