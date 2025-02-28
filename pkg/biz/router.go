@@ -4,23 +4,22 @@ import (
 	"github.com/gin-gonic/gin"
 	"yujian-backend/pkg/biz/auth"
 
+	"yujian-backend/pkg/biz/book"
 	"yujian-backend/pkg/biz/user"
 )
 
 // SetupRouter 设置路由
 func SetupRouter(r *gin.Engine) {
 	// 用户相关的路由
-	userGroup := r.Group("/api/users")
+	userGroup := r.Group("/api/user")
 	{
 		userGroup.GET("/info", user.GetUserById())                   //信息获取
 		userGroup.PUT("/update", user.UpdateUser())                  //更新
 		userGroup.PUT("/password/change/:id", user.PasswordChange()) //修改密码
 		userGroup.DELETE("/delete/:id", user.DeleteUser())           //删除用户
+		userGroup.POST("/login", auth.UserLogin())                   //登录
+		userGroup.POST("/register", auth.UserRegister())             //注册
 	}
-
-	// 登录相关的路由
-	r.POST("/api/user/login", auth.UserLogin())       //登录
-	r.POST("/api/user/register", auth.UserRegister()) //注册
 
 	bookGroup := r.Group("/api/books")
 	{
@@ -37,7 +36,7 @@ func SetupRouter(r *gin.Engine) {
 	}
 
 	//其他
-	r.GET("/api/captcha/get", other.GetCaptcha()) //验证码获取
-	r.GET("/api/messages", other.GetNews())       //消息获取
+	//r.GET("/api/captcha/get", other.GetCaptcha()) //验证码获取
+	//r.GET("/api/messages", other.GetNews())       //消息获取
 
 }

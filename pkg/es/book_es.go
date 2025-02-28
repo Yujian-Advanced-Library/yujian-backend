@@ -1,5 +1,5 @@
 package es
-// 对不起我试着学了一下发现真的不是很能搞懂es查询方面的内容，感觉我和它中间间隔了一学期数据库的知识一样......
+
 import (
 	"context"
 	"encoding/json"

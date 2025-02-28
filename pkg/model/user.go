@@ -34,11 +34,17 @@ func (userDO *UserDO) Transfer() *UserDTO {
 	}
 }
 
-
 // GetUserByIdResponse 根据ID获取用户的返回体
 type GetUserByIdResponse struct {
 	BaseResp
 	Userinfo UserDTO `json:"userinfo"`
+}
+
+// UpdateUserRequest 更新用户信息请求体
+type UpdateUserRequest struct {
+	Name     string `json:"name"`
+	Password string `json:"password"`
+	Email    string `json:"email"`
 }
 
 // UpdateUserResponse 更新用户信息返回体

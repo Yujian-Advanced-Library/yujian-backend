@@ -1,7 +1,7 @@
 package model
 
 import (
-	"yujian-backend/pkg/utils"
+	"time"
 )
 
 // BookInfoDTO 书信息DTO
@@ -60,7 +60,6 @@ func (bookInfoDTO *BookInfoDTO) TransformToDO() *BookInfoDO {
 	}
 }
 
-
 // 搜索请求结构体
 type BookSearchRequest struct {
 	Keyword  string `json:"Keyword"`  //关键词
@@ -71,6 +70,7 @@ type BookSearchRequest struct {
 
 // 搜索返回请求结构体
 type SearchResponse struct {
+	BaseResp
 	Books []BookInfoDTO `json:"books"`
 }
 
@@ -132,7 +132,6 @@ func (bookCommentDO *BookCommentDO) TransformToDTO() *BookCommentDTO {
 	}
 }
 
-
 // CreatReviewRequest 书评发布请求结构体
 type CreatReviewRequest struct {
 	BookId      int64   `json:"book_id"`      //图书id
@@ -146,13 +145,11 @@ type CreatReviewResponse struct {
 	BaseResp
 }
 
-
 // ReviewsResponse 获取书评的返回结构体
 type ReviewsResponse struct {
 	BaseResp
 	Reviews []BookCommentDTO `json:"book_reviews"`
 }
-
 
 // ClickLikeResponse 点赞/踩返回结构体
 type ClickLikeResponse struct {
@@ -160,4 +157,3 @@ type ClickLikeResponse struct {
 	Like    int64 `json:"like"`
 	Dislike int64 `json:"dislike"`
 }
-

@@ -4,15 +4,13 @@ import (
 	"errors"
 	"net/http"
 	"time"
-  
+
 	"yujian-backend/pkg/db"
 	"yujian-backend/pkg/model"
 
 	"github.com/gin-gonic/gin"
-  "github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
-
 
 // jwt密钥
 var jwtKey = []byte("your_secret_key")
@@ -57,7 +55,6 @@ func UserLogin() gin.HandlerFunc {
 			c.JSON(http.StatusOK, userNotFound)
 			return
 		} else {
-			// todo 用JWT来解决
 			// 验证用户密码
 			if userDTO.Password == authInfo.Password {
 				// 当密码匹配时，返回包含令牌和用户信息的成功响应
@@ -106,7 +103,6 @@ func UserLogin() gin.HandlerFunc {
 		}
 	}
 }
-
 
 // UserRegister 返回一个处理用户注册的中间件函数
 // 该函数接收用户注册信息，并在成功注册后返回一个令牌
@@ -218,13 +214,7 @@ func UserRegister() gin.HandlerFunc {
 			},
 			Token: tokenString,
 			User:  *newUser,
-			BaseResp: model.BaseResp{
-				Code:  model.Success,
-				Error: nil,
-			},
 		}
 		c.JSON(http.StatusOK, okResp)
 	}
 }
-
-

@@ -8,7 +8,6 @@ import (
 	"yujian-backend/pkg/model"
 )
 
-
 // SearchBooks 搜索书
 func SearchBooks(c *gin.Context) {
 	var req model.BookSearchRequest
@@ -16,9 +15,8 @@ func SearchBooks(c *gin.Context) {
 	if err := c.ShouldBindQuery(&req); err != nil {
 		c.JSON(http.StatusBadRequest, model.SearchResponse{
 			BaseResp: model.BaseResp{
-				Error:  err,
-				Code:   http.StatusBadRequest,
-				ErrMsg: "invalid request parameters",
+				Error: err,
+				Code:  http.StatusBadRequest,
 			},
 			Books: nil,
 		})
