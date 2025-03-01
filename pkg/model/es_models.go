@@ -35,6 +35,18 @@ type EsModel interface {
 	GetTitle() string
 }
 
+type BookInfoESArr []BookInfoES
+
+func (arr BookInfoESArr) Len() int {
+	return len(arr)
+}
+func (arr BookInfoESArr) Less(i, j int) bool {
+	return arr[i].GetScore() > arr[j].GetScore()
+}
+func (arr BookInfoESArr) Swap(i, j int) {
+	arr[i], arr[j] = arr[j], arr[i]
+}
+
 // BookInfoES 表示 Elasticsearch 中存储的图书信息
 type BookInfoES struct {
 	ID          int64   `json:"id"`

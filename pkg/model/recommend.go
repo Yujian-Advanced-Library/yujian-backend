@@ -36,3 +36,8 @@ func (u *UserRecommendRecordDO) Convert2DTO() *UserRecommendRecordDTO {
 	_ = json.Unmarshal([]byte(u.KeyWords), &dto.KeyWords)
 	return dto
 }
+
+type RecommendResponse struct {
+	BaseResp
+	Books []*BookInfoDTO `json:"books"`
+}

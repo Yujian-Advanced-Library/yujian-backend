@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"gorm.io/gorm"
+	"sort"
 	"yujian-backend/pkg/es"
 	"yujian-backend/pkg/log"
 	"yujian-backend/pkg/model"
@@ -107,10 +108,60 @@ func (r *BookRepository) SearchBooks(keyword, category string, page, pageSize in
 	}
 
 	//根据book_id从数据库中查询图书信息
-	var bookDTOs []*model.BookInfoDTO
-	if r.DB.Where("id IN ?", bookIDs).Find(&bookDTOs).Error != nil {
+	var bookDOs []*model.BookInfoDO
+	if err = r.DB.Where("id IN ?", bookIDs).Find(&bookDOs).Error; err != nil {
 		log.GetLogger().Warnf("failed to search books in DB: %v", err)
 		return nil, fmt.Errorf("failed to search books in DB: %v", err)
 	}
+
+	bookDTOs := make([]*model.BookInfoDTO, len(bookDOs))
+	for i, bookDO := range bookDOs {
+		bookDTOs[i] = bookDO.Transfer()
+	}
 	return bookDTOs, nil
+}
+
+func (r *BookRepository) RandomQuery(cnt int) ([]*model.BookInfoDTO, error) {
+	var bookDOs []*model.BookInfoDO
+	if err := r.DB.Limit(cnt).Find(&bookDOs).Error; err != nil {
+		log.GetLogger().Warnf("failed to search books in DB: %v", err)
+		return nil, err
+	}
+	bookDTOs := make([]*model.BookInfoDTO, len(bookDOs))
+	for i, bookDO := range bookDOs {
+		bookDTOs[i] = bookDO.Transfer()
+	}
+	return bookDTOs, nil
+}
+
+func (r *BookRepository) SearchBooksWithScore(keyword string, fields ...string) ([]*model.BookInfoDTO, error) {
+	var esConditions []model.Condition
+	for _, field := range fields {
+		esConditions = append(esConditions, model.Condition{
+			Fields: []string{field},
+			Value:  keyword,
+		})
+	}
+	condition := model.EsQueryCondition{
+		Conditions:         esConditions,
+		MinimumShouldMatch: 1,
+		From:               0,
+		Size:               100,
+	}
+
+	if books, err := es.SearchArticlesWithScores[model.BookInfoES](context.Background(), "book", condition); err != nil {
+		return nil, fmt.Errorf("failed to search books in ES: %v", err)
+	} else {
+		sort.Sort(model.BookInfoESArr(books))
+		var bookDTOs []*model.BookInfoDTO
+		for _, book := range books {
+			var bookDO model.BookInfoDO
+			if err = r.DB.Find(&bookDO, book.ID).Error; err != nil {
+				continue
+			} else {
+				bookDTOs = append(bookDTOs, bookDO.Transfer())
+			}
+		}
+		return bookDTOs, nil
+	}
 }

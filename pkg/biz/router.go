@@ -5,6 +5,7 @@ import (
 	"yujian-backend/pkg/biz/auth"
 	"yujian-backend/pkg/biz/book"
 	"yujian-backend/pkg/biz/post"
+	"yujian-backend/pkg/biz/recommend"
 	"yujian-backend/pkg/biz/user"
 )
 
@@ -54,10 +55,10 @@ func SetupRouter(r *gin.Engine) {
 		posts.POST("/posts/comments/:commentId/dislike", post.DisLikeComment())
 	}
 
-	recommend := r.Group("/api/recommendation")
+	recom := r.Group("/api/recommendation")
 	{
-		recommend.GET("/personal")
-		recommend.GET("/topic")
-		recommend.GET("/hot")
+		recom.GET("/personal", recommend.Personal())
+		recom.GET("/topic", recommend.Topic())
+		recom.GET("/hot", recommend.Hot())
 	}
 }

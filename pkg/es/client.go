@@ -124,7 +124,7 @@ func Search[T model.EsModel](ctx context.Context, indexName string, condition mo
 	searchQuery := map[string]interface{}{
 		"query": map[string]interface{}{
 			"bool": map[string]interface{}{
-				"should":               []interface{}{shouldFields},
+				"should":               shouldFields,
 				"minimum_should_match": condition.MinimumShouldMatch, // 至少匹配一个 should 子句
 			},
 		},
@@ -359,15 +359,26 @@ func FindSimilarArticles[T model.EsModel](ctx context.Context, indexName string,
 }
 
 // SearchArticlesWithScores 搜索文章并返回相似度分数
-func SearchArticlesWithScores[T model.EsModel](ctx context.Context, indexName string, query string) ([]T, error) {
+func SearchArticlesWithScores[T model.EsModel](ctx context.Context, indexName string, condition model.EsQueryCondition) ([]T, error) {
+
+	var matchFields []interface{}
+	for _, condition := range condition.Conditions {
+		shouldCondition := map[string]interface{}{
+			"multi_match": map[string]interface{}{
+				"query":  condition.Value,
+				"fields": condition.Fields,
+			},
+		}
+		matchFields = append(matchFields, shouldCondition)
+	}
+
 	searchQuery := map[string]interface{}{
 		"query": map[string]interface{}{
-			"multi_match": map[string]interface{}{
-				"query":  query,
-				"fields": []string{"title", "content"},
+			"bool": map[string]interface{}{
+				"should":               matchFields,
+				"minimum_should_match": condition.MinimumShouldMatch, // 至少匹配一个 should 子句
 			},
 		},
-		"_source": true,
 	}
 
 	body, err := json.Marshal(searchQuery)
@@ -416,7 +427,7 @@ func SearchArticlesWithScores[T model.EsModel](ctx context.Context, indexName st
 
 		var item T
 		if err := json.Unmarshal(articleBytes, &item); err != nil {
-			log.GetLogger().Error("Error unmarshaling article: %v", err)
+			log.GetLogger().Error("Error unmarshalling article: %v", err)
 			continue
 		}
 
