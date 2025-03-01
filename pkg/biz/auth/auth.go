@@ -3,6 +3,7 @@ package auth
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"yujian-backend/pkg/db"
@@ -15,10 +16,72 @@ import (
 // jwt密钥
 var jwtKey = []byte("your_secret_key")
 
-// Claims 定义jwt的claims结构
-type Claims struct {
-	Username string `json:"username"`
-	jwt.RegisteredClaims
+func MiddleWareAuth() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		//验证登录凭证
+		// 从请求头中提取 JWT 令牌
+		authHeader := c.GetHeader("Authorization")
+		if len(authHeader) == 0 {
+			c.JSON(http.StatusUnauthorized, model.BaseResp{
+				Error:  nil,
+				Code:   http.StatusUnauthorized,
+				ErrMsg: "Authorization header is required",
+			})
+			return
+		}
+
+		// 检查 Authorization 头的格式
+		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+		if tokenString == authHeader || len(tokenString) == 0 {
+			c.JSON(http.StatusUnauthorized, model.BaseResp{
+				Error:  nil,
+				Code:   http.StatusUnauthorized,
+				ErrMsg: "Invalid token format",
+			})
+			return
+		}
+
+		// 解析并验证 JWT 令牌
+		claims := &model.Claims{}
+		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+			return jwtKey, nil
+		})
+		if err != nil {
+			if errors.Is(err, jwt.ErrSignatureInvalid) {
+				c.JSON(http.StatusUnauthorized, model.BaseResp{
+					Error:  err,
+					Code:   http.StatusUnauthorized,
+					ErrMsg: "Invalid token signature",
+				})
+				return
+			}
+			c.JSON(http.StatusUnauthorized, model.BaseResp{
+				Error:  err,
+				Code:   http.StatusUnauthorized,
+				ErrMsg: "Invalid or expired token",
+			})
+			return
+		}
+		if !token.Valid {
+			c.JSON(http.StatusUnauthorized, model.BaseResp{
+				Error:  nil,
+				Code:   http.StatusUnauthorized,
+				ErrMsg: "Invalid token",
+			})
+			return
+		}
+
+		username := claims.Username
+
+		if user, err := db.GetUserRepository().GetUserByName(username); err != nil {
+			c.JSON(http.StatusInternalServerError, model.BaseResp{Error: errors.New("internal server error"), Code: http.StatusInternalServerError, ErrMsg: "internal server error"})
+			return
+		} else {
+			c.Set("user", user)
+		}
+
+		c.Next()
+	}
 }
 
 // UserLogin 返回一个处理用户登录的中间件函数
@@ -59,7 +122,7 @@ func UserLogin() gin.HandlerFunc {
 			if userDTO.Password == authInfo.Password {
 				// 当密码匹配时，返回包含令牌和用户信息的成功响应
 				expirationTime := time.Now().Add(24 * time.Hour) //Token有效期24h
-				claims := &Claims{
+				claims := &model.Claims{
 					Username: authInfo.UserName,
 					RegisteredClaims: jwt.RegisteredClaims{
 						ExpiresAt: jwt.NewNumericDate(expirationTime),
@@ -183,7 +246,7 @@ func UserRegister() gin.HandlerFunc {
 
 		//生成jwt令牌
 		expirationTime := time.Now().Add(24 * time.Hour) // 令牌有效期为 24 小时
-		claims := &Claims{
+		claims := &model.Claims{
 			Username: registerInfo.UserName,
 			RegisteredClaims: jwt.RegisteredClaims{
 				ExpiresAt: jwt.NewNumericDate(expirationTime),

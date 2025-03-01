@@ -2,6 +2,18 @@ package model
 
 import "fmt"
 
+type Condition struct {
+	Fields []string
+	Value  string
+}
+
+type EsQueryCondition struct {
+	Conditions         []Condition
+	MinimumShouldMatch int
+	From               int
+	Size               int
+}
+
 // EsModel 定义了一个ES模型
 type EsModel interface {
 	// SetScore 设置对象的评分
@@ -22,7 +34,6 @@ type EsModel interface {
 	// 获取标题
 	GetTitle() string
 }
-
 
 // BookInfoES 表示 Elasticsearch 中存储的图书信息
 type BookInfoES struct {

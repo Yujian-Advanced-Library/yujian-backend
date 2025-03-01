@@ -1,7 +1,11 @@
 package db
 
 import (
+	"context"
+	"fmt"
 	"gorm.io/gorm"
+	"yujian-backend/pkg/es"
+	"yujian-backend/pkg/log"
 	"yujian-backend/pkg/model"
 )
 
@@ -11,8 +15,8 @@ type BookRepository struct {
 
 var bookRepository BookRepository
 
-func GetBookRepository() BookRepository {
-	return bookRepository
+func GetBookRepository() *BookRepository {
+	return &bookRepository
 }
 
 // 书
@@ -89,12 +93,9 @@ func (r *BookRepository) DeleteBookComment(id int64) error {
 	return r.DB.Delete(&model.BookCommentDO{}, id).Error
 }
 
-
 // SearchBooks 搜索书
-//改用了es查询符合的book_id然后再用id查，但是我不确定es的部分
-func (r *BookRepository) SearchBooks(keyword, category string, page, pageSize int) ([]model.BookInfoDTO, error) {
+func (r *BookRepository) SearchBooks(keyword, category string, page, pageSize int) ([]*model.BookInfoDTO, error) {
 	// 调用es查询符合条件的book_id
-	//es
 	ctx := context.Background()
 	bookIDs, err := es.SearchBooks(ctx, keyword, category, page, pageSize)
 	if err != nil {
@@ -102,19 +103,14 @@ func (r *BookRepository) SearchBooks(keyword, category string, page, pageSize in
 	}
 	//如查询结果为空,直接返回空列表
 	if len(bookIDs) == 0 {
-		return []model.BookInfoDTO{}, nil
+		return []*model.BookInfoDTO{}, nil
 	}
 
 	//根据book_id从数据库中查询图书信息
-	var bookDTOs []model.BookInfoDTO
-	for _, id := range bookIDs {
-		book, err := r.GetBookById(id)
-		if err != nil {
-			// 如果某本书查询失败，记录日志并跳过
-			fmt.Printf("failed to get book by id %d: %v\n", id, err)
-			continue
-		}
-		bookDTOs = append(bookDTOs, *book)
+	var bookDTOs []*model.BookInfoDTO
+	if r.DB.Where("id IN ?", bookIDs).Find(&bookDTOs).Error != nil {
+		log.GetLogger().Warnf("failed to search books in DB: %v", err)
+		return nil, fmt.Errorf("failed to search books in DB: %v", err)
 	}
 	return bookDTOs, nil
 }

@@ -118,7 +118,7 @@ func (r *PostRepository) BatchGetPostCommentById(ids []int64) ([]*model.PostComm
 }
 
 // GetPostByTimeLine 根据时间范围获取帖子
-func (r *PostRepository) GetPostByTimeLine(startTime time.Time, endTime time.Time, page int, pageSize int) ([]*model.PostDTO, int64, error) {
+func (r *PostRepository) GetPostByTimeLine(startTime time.Time, endTime time.Time, category string, page int, pageSize int) ([]*model.PostDTO, int64, error) {
 	var posts []*model.PostDO
 	var total int64
 
@@ -177,4 +177,23 @@ func (r *PostRepository) GetPostByUserId(userId int64, page int, pageSize int) (
 	}
 
 	return postDTOs, total, nil
+}
+
+// CreatePostComment 创建帖子评论
+func (r *PostRepository) CreatePostComment(user *model.UserDTO, postId int64, content string) error {
+	comment := model.PostCommentDO{
+		PostId:         postId,
+		AuthorId:       user.Id,
+		AuthorName:     user.Name,
+		EditTime:       time.Now(),
+		Content:        content,
+		LikeUserIds:    "",
+		DislikeUserIds: "",
+	}
+	return r.DB.Create(&comment).Error
+}
+
+func (r *PostRepository) UpdateComment(comment *model.PostCommentDTO) error {
+	do := comment.TransformToDO()
+	return r.DB.Save(do).Error
 }

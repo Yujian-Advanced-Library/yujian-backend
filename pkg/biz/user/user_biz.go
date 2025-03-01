@@ -37,13 +37,6 @@ func UpdateUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userRepository := db.GetUserRepository()
 
-		id := c.Param("id")
-		userId, err := strconv.ParseInt(id, 10, 64)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, model.BaseResp{Error: err, Code: http.StatusBadRequest, ErrMsg: "Invalid user ID"})
-			return
-		}
-
 		var updateReq model.UpdateUserRequest
 		if err := c.ShouldBindJSON(&updateReq); err != nil {
 			c.JSON(http.StatusBadRequest, model.BaseResp{Error: err, Code: http.StatusBadRequest, ErrMsg: "Invalid request body"})
@@ -51,12 +44,12 @@ func UpdateUser() gin.HandlerFunc {
 		}
 
 		userDTO := model.UserDTO{
+			Id:       updateReq.Id,
 			Email:    updateReq.Email,
 			Name:     updateReq.Name,
 			Password: updateReq.Password,
 		}
 		userDO := userDTO.Transfer()
-		userDO.Id = userId
 		if err := userRepository.UpdateUser(userDO); err != nil {
 			c.JSON(http.StatusInternalServerError, model.BaseResp{Error: err, Code: http.StatusInternalServerError, ErrMsg: "Failed to update user"})
 			return

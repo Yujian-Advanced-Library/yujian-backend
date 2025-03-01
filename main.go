@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-
 	mylog "yujian-backend/pkg/log"
 )
 
@@ -27,7 +26,6 @@ func main() {
 	errQuit := make(chan error, 1)
 	go func() {
 		if err := r.Run(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			// todo[xinhui]: 添加日志,记录错误
 			errQuit <- err
 		}
 	}()

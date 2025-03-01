@@ -1,5 +1,7 @@
 package model
 
+import "github.com/golang-jwt/jwt/v5"
+
 type LoginRequestDTO struct {
 	UserName string `json:"user_name"`
 	Password string `json:"password"`

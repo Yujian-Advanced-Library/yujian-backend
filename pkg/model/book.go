@@ -15,7 +15,8 @@ type BookInfoDTO struct {
 	ISBN        string  `json:"ISBN"`
 	Score       float64 `json:"score"`
 	Intro       string  `json:"intro"`
-} //
+	Category    string  `json:"Category"` //分类
+}
 
 // BookInfoDO 书信息数据库对象
 type BookInfoDO struct {
@@ -28,7 +29,8 @@ type BookInfoDO struct {
 	ISBN        string  `gorm:"column:isbn" json:"ISBN"`
 	Score       float64 `gorm:"column:score" json:"score"`
 	Intro       string  `gorm:"column:intro" json:"intro"`
-} //
+	Category    string  `json:"Category"` //分类
+}
 
 // TransformToDTO 将BookInfoDO转换为BookInfoDTO
 func (bookInfoDO *BookInfoDO) Transfer() *BookInfoDTO {
@@ -42,6 +44,7 @@ func (bookInfoDO *BookInfoDO) Transfer() *BookInfoDTO {
 		ISBN:        bookInfoDO.ISBN,
 		Score:       bookInfoDO.Score,
 		Intro:       bookInfoDO.Intro,
+		Category:    bookInfoDO.Category,
 	}
 }
 
@@ -57,6 +60,7 @@ func (bookInfoDTO *BookInfoDTO) TransformToDO() *BookInfoDO {
 		ISBN:        bookInfoDTO.ISBN,
 		Score:       bookInfoDTO.Score,
 		Intro:       bookInfoDTO.Intro,
+		Category:    bookInfoDTO.Category,
 	}
 }
 
@@ -65,13 +69,13 @@ type BookSearchRequest struct {
 	Keyword  string `json:"Keyword"`  //关键词
 	Category string `json:"Category"` //分类
 	Page     int    `json:"Page"`     //页码
-	PageSize int    `json:"PageSize"` //页码数量？？
+	PageSize int    `json:"PageSize"` //页码数量
 }
 
 // 搜索返回请求结构体
 type SearchResponse struct {
 	BaseResp
-	Books []BookInfoDTO `json:"books"`
+	Books []*BookInfoDTO `json:"books"`
 }
 
 // BookDetailResponse 图书详情返回

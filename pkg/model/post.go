@@ -1,36 +1,48 @@
 package model
 
 import (
+	"encoding/json"
 	"time"
 )
 
 // PostDTO 帖子DTO
 type PostDTO struct {
-	Id       int64             `json:"id"`
-	Author   *UserDTO          `json:"author"`
-	Title    string            `json:"title"`
-	EditTime time.Time         `json:"edit_time"`
-	Comments []*PostCommentDTO `json:"comments"`
+	Id            int64             `json:"id"`
+	Author        *UserDTO          `json:"author"`
+	Title         string            `json:"title"`
+	EditTime      time.Time         `json:"edit_time"`
+	Category      string            `json:"category"`
+	Comments      []*PostCommentDTO `json:"comments"`
+	LikeUserIds   []int64           `json:"like_user_ids"`
+	UnlikeUserIds []int64           `json:"unlike_user_ids"`
 }
 
 // TransformToDO 将PostDTO转换为PostDO
 func (p *PostDTO) TransformToDO() *PostDO {
+	likeIds, _ := json.Marshal(p.LikeUserIds)
+	unlikeIds, _ := json.Marshal(p.UnlikeUserIds)
 	return &PostDO{
-		Id:         p.Id,
-		AuthorId:   p.Author.Id,
-		AuthorName: p.Author.Name,
-		Title:      p.Title,
-		EditTime:   p.EditTime,
+		Id:            p.Id,
+		AuthorId:      p.Author.Id,
+		AuthorName:    p.Author.Name,
+		Title:         p.Title,
+		EditTime:      p.EditTime,
+		Category:      p.Category,
+		LikeUserIds:   string(likeIds),
+		UnlikeUserIds: string(unlikeIds),
 	}
 }
 
 // PostDO 帖子DO
 type PostDO struct {
-	Id         int64     `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
-	AuthorId   int64     `gorm:"column:author_id" json:"author_id"`
-	AuthorName string    `gorm:"column:author_name" json:"author_name"`
-	Title      string    `gorm:"column:title" json:"title"`
-	EditTime   time.Time `gorm:"column:edit_time" json:"edit_time"`
+	Id            int64     `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	AuthorId      int64     `gorm:"column:author_id" json:"author_id"`
+	AuthorName    string    `gorm:"column:author_name" json:"author_name"`
+	Title         string    `gorm:"column:title" json:"title"`
+	Category      string    `gorm:"column:category" json:"category"`
+	EditTime      time.Time `gorm:"column:edit_time" json:"edit_time"`
+	LikeUserIds   string    `gorm:"like_user_ids" json:"likes"`
+	UnlikeUserIds string    `gorm:"unlike_user_ids" json:"unlike_user_ids"`
 }
 
 func (p PostDO) TableName() string {
@@ -39,13 +51,17 @@ func (p PostDO) TableName() string {
 
 // TransformToDTO 将PostDO转换为PostDTO
 func (p *PostDO) TransformToDTO(userDTO *UserDTO, comments []*PostCommentDTO) *PostDTO {
-	return &PostDTO{
+	dto := &PostDTO{
 		Id:       p.Id,
 		Author:   userDTO,
 		Title:    p.Title,
 		EditTime: p.EditTime,
 		Comments: comments,
+		Category: p.Category,
 	}
+	_ = json.Unmarshal([]byte(p.UnlikeUserIds), &dto.UnlikeUserIds)
+	_ = json.Unmarshal([]byte(p.LikeUserIds), &dto.LikeUserIds)
+	return dto
 }
 
 // PostEsModel 帖子ES模型
@@ -87,7 +103,6 @@ type PostCommentDTO struct {
 	Author         UserDTO   `json:"author"`
 	EditTime       time.Time `json:"edit_time"`
 	Content        string    `json:"content"`          // 评论的内容不会很长,直接存mysql
-	Score          int       `json:"score"`            // 评论的分数
 	LikeUserIds    []int64   `json:"like_user_ids"`    // 点赞的用户ID列表
 	DislikeUserIds []int64   `json:"dislike_user_ids"` // 点踩的用户ID列表
 }
@@ -100,7 +115,6 @@ type PostCommentDO struct {
 	AuthorName     string    `gorm:"column:author_name" json:"author_name"`
 	EditTime       time.Time `gorm:"column:edit_time" json:"edit_time"`
 	Content        string    `gorm:"column:content" json:"content"` // 评论的内容不会很长,直接存mysql
-	Score          int       `gorm:"column:score" json:"score"`
 	LikeUserIds    string    `gorm:"column:like_user_ids" json:"like_user_ids"`
 	DislikeUserIds string    `gorm:"column:dislike_user_ids" json:"dislike_user_ids"`
 }
@@ -133,9 +147,9 @@ func (p *PostCommentDTO) TransformToDO() *PostCommentDO {
 
 // CreatePostRequestDTO 创建帖子请求DTO
 type CreatePostRequestDTO struct {
-	Title   string `json:"title"`
-	Content string `json:"content"`
-	UserId  int64  `json:"user_id"`
+	Title    string `json:"title"`
+	Content  string `json:"content"`
+	Category string `json:"category"`
 }
 
 // CreatePostResponseDTO 创建帖子响应DTO
@@ -150,6 +164,7 @@ type GetPostByTimeLineRequestDTO struct {
 	EndTime   time.Time `json:"end_time"`
 	Page      int       `json:"page"`
 	PageSize  int       `json:"page_size"`
+	Category  string    `json:"category"`
 }
 
 // GetPostByTimeLineResponseDTO 获取帖子时间线响应DTO
@@ -193,4 +208,10 @@ type GetPostContentByPostIdRequestDTO struct {
 type GetPostContentByPostIdResponseDTO struct {
 	BaseResp
 	Content string `json:"content"`
+}
+
+// CreatePostCommentReq 创建帖子评论请求
+type CreatePostCommentReq struct {
+	Content string
+	PostId  int64
 }

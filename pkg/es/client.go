@@ -109,18 +109,32 @@ func PutSimilarityMapping(ctx context.Context, indexName string, fieldName strin
 }
 
 // Search 搜索内容
-func Search[T model.EsModel](ctx context.Context, indexName string, query string, fields ...string) ([]T, error) {
+func Search[T model.EsModel](ctx context.Context, indexName string, condition model.EsQueryCondition) ([]T, error) {
+	var shouldFields []interface{}
+	for _, condition := range condition.Conditions {
+		shouldCondition := map[string]interface{}{
+			"multi_match": map[string]interface{}{
+				"query":  condition.Value,
+				"fields": condition.Fields,
+			},
+		}
+		shouldFields = append(shouldFields, shouldCondition)
+	}
+
 	searchQuery := map[string]interface{}{
 		"query": map[string]interface{}{
-			"multi_match": map[string]interface{}{
-				"query":  query,
-				"fields": fields,
+			"bool": map[string]interface{}{
+				"should":               []interface{}{shouldFields},
+				"minimum_should_match": condition.MinimumShouldMatch, // 至少匹配一个 should 子句
 			},
 		},
+		"from": condition.From,
+		"size": condition.Size,
 	}
 
 	body, err := json.Marshal(searchQuery)
 	if err != nil {
+		log.GetLogger().Warnf("Error marshaling es-search query: %v", err)
 		return nil, err
 	}
 
@@ -130,6 +144,7 @@ func Search[T model.EsModel](ctx context.Context, indexName string, query string
 		es.Search.WithBody(bytes.NewReader(body)),
 	)
 	if err != nil {
+		log.GetLogger().Warnf("Error searching documents: %v", err)
 		return nil, err
 	}
 	defer res.Body.Close()

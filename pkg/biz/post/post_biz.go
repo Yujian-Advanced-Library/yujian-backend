@@ -7,21 +7,14 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	"yujian-backend/pkg/db"
 
 	"github.com/gin-gonic/gin"
 
-	"yujian-backend/pkg/db"
 	"yujian-backend/pkg/es"
 	"yujian-backend/pkg/log"
 	"yujian-backend/pkg/model"
 )
-
-var postBizInstance *PostBiz
-
-// PostBiz 帖子业务逻辑
-type PostBiz struct {
-	postRepo *db.PostRepository
-}
 
 // CreatePost 创建帖子
 func CreatePost() gin.HandlerFunc {
@@ -29,14 +22,32 @@ func CreatePost() gin.HandlerFunc {
 		// 从请求中获取参数
 		var req model.CreatePostRequestDTO
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, model.BaseResp{
+				Code:   http.StatusUnauthorized,
+				Error:  errors.New("invalid request body"),
+				ErrMsg: "Invalid request body",
+			})
 			return
 		}
 
-		// todo 这里外层的逻辑需要修改
-		resp := postBizInstance.CreatePost(&req)
+		obj, exists := c.Get("userName")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, model.BaseResp{
+				Code:   http.StatusUnauthorized,
+				Error:  errors.New("用户未登录"),
+				ErrMsg: "用户未登录",
+			})
+			return
+		}
+		userDTO := obj.(*model.UserDTO)
+
+		resp := createPost(&req, userDTO)
 		if resp.Code != model.Success {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": resp.Error.Error()})
+			c.JSON(http.StatusInternalServerError, model.BaseResp{
+				Code:   http.StatusInternalServerError,
+				Error:  errors.New("failed to create post"),
+				ErrMsg: "failed to create post",
+			})
 			return
 		}
 		c.JSON(http.StatusOK, resp)
@@ -45,7 +56,7 @@ func CreatePost() gin.HandlerFunc {
 	}
 }
 
-func (b *PostBiz) CreatePost(req *model.CreatePostRequestDTO) *model.CreatePostResponseDTO {
+func createPost(req *model.CreatePostRequestDTO, user *model.UserDTO) *model.CreatePostResponseDTO {
 	resp := &model.CreatePostResponseDTO{
 		BaseResp: model.BaseResp{
 			Code: model.Success,
@@ -61,16 +72,16 @@ func (b *PostBiz) CreatePost(req *model.CreatePostRequestDTO) *model.CreatePostR
 
 	// 构建帖子DO
 	postDTO := &model.PostDTO{
-		Title: req.Title,
-		Author: &model.UserDTO{
-			Id: req.UserId,
-		},
+		Title:    req.Title,
+		Author:   user,
 		EditTime: time.Now(),
+		Category: req.Category,
 		Comments: []*model.PostCommentDTO{},
 	}
 
 	// 保存帖子
-	id, err := b.postRepo.CreatePost(postDTO)
+	repository := db.GetPostRepository()
+	id, err := repository.CreatePost(postDTO)
 	if err != nil {
 		log.GetLogger().Error("创建帖子失败: %v", err)
 		resp.Code = model.InternalError
@@ -91,7 +102,7 @@ func (b *PostBiz) CreatePost(req *model.CreatePostRequestDTO) *model.CreatePostR
 		resp.Code = model.InternalError
 		resp.Error = fmt.Errorf("帖子创建失败保存到ES失败: %v", err)
 		// 保存到ES失败，删除帖子
-		if errRollback := b.postRepo.DeletePost(id); errRollback != nil {
+		if errRollback := repository.DeletePost(id); errRollback != nil {
 			resp.Code = model.InternalError
 			resp.Error = fmt.Errorf("帖子创建失败保存到ES失败: %v, 回滚删除帖子失败: %v", err, errRollback)
 		}
@@ -110,7 +121,7 @@ func GetPostByTimeLine() gin.HandlerFunc {
 			return
 		}
 
-		resp := postBizInstance.GetPostByTimeLine(&req)
+		resp := getPostByTimeLine(&req)
 		if resp.Code != model.Success {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": resp.Error.Error()})
 			return
@@ -120,22 +131,29 @@ func GetPostByTimeLine() gin.HandlerFunc {
 	}
 }
 
-func (b *PostBiz) GetPostByTimeLine(req *model.GetPostByTimeLineRequestDTO) *model.GetPostByTimeLineResponseDTO {
+func getPostByTimeLine(req *model.GetPostByTimeLineRequestDTO) *model.GetPostByTimeLineResponseDTO {
 	resp := &model.GetPostByTimeLineResponseDTO{
 		BaseResp: model.BaseResp{
 			Code: model.Success,
 		},
 	}
 
-	// 参数校验
-	if req.StartTime.IsZero() || req.EndTime.IsZero() || req.Page <= 0 || req.PageSize <= 0 {
-		resp.Code = model.InvalidRequestBody
-		resp.Error = errors.New("参数错误")
-		return resp
+	if req.StartTime.IsZero() {
+		req.StartTime = time.Now().Add(-24 * time.Hour)
+	}
+	if req.EndTime.IsZero() {
+		req.EndTime = time.Now()
+	}
+	if req.Page < 0 {
+		req.Page = 1
+	}
+	if req.PageSize < 0 {
+		req.PageSize = 10
 	}
 
 	// 获取帖子
-	posts, total, err := b.postRepo.GetPostByTimeLine(req.StartTime, req.EndTime, req.Page, req.PageSize)
+	repository := db.GetPostRepository()
+	posts, total, err := repository.GetPostByTimeLine(req.StartTime, req.EndTime, req.Category, req.Page, req.PageSize)
 	if err != nil {
 		resp.Code = model.InternalError
 		resp.Error = errors.New("获取帖子失败")
@@ -156,7 +174,7 @@ func GetPostByUserId() gin.HandlerFunc {
 			return
 		}
 
-		resp := postBizInstance.GetPostByUserId(&req)
+		resp := getPostByUserId(&req)
 		if resp.Code != model.Success {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": resp.Error.Error()})
 			return
@@ -166,7 +184,7 @@ func GetPostByUserId() gin.HandlerFunc {
 	}
 }
 
-func (b *PostBiz) GetPostByUserId(req *model.GetPostByUserIdRequestDTO) *model.GetPostByUserIdResponseDTO {
+func getPostByUserId(req *model.GetPostByUserIdRequestDTO) *model.GetPostByUserIdResponseDTO {
 	resp := &model.GetPostByUserIdResponseDTO{
 		BaseResp: model.BaseResp{
 			Code: model.Success,
@@ -181,7 +199,8 @@ func (b *PostBiz) GetPostByUserId(req *model.GetPostByUserIdRequestDTO) *model.G
 	}
 
 	// 获取帖子
-	posts, total, err := b.postRepo.GetPostByUserId(req.UserId, req.Page, req.PageSize)
+	repository := db.GetPostRepository()
+	posts, total, err := repository.GetPostByUserId(req.UserId, req.Page, req.PageSize)
 	if err != nil {
 		resp.Code = model.InternalError
 		resp.Error = errors.New("获取帖子失败")
@@ -202,7 +221,7 @@ func GetPostById() gin.HandlerFunc {
 			return
 		}
 
-		resp := postBizInstance.GetPostById(&req)
+		resp := getPostById(&req)
 		if resp.Code != model.Success {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": resp.Error.Error()})
 			return
@@ -212,7 +231,7 @@ func GetPostById() gin.HandlerFunc {
 	}
 }
 
-func (b *PostBiz) GetPostById(req *model.GetPostByIdRequestDTO) *model.GetPostByIdResponseDTO {
+func getPostById(req *model.GetPostByIdRequestDTO) *model.GetPostByIdResponseDTO {
 	resp := &model.GetPostByIdResponseDTO{
 		BaseResp: model.BaseResp{
 			Code: model.Success,
@@ -227,7 +246,8 @@ func (b *PostBiz) GetPostById(req *model.GetPostByIdRequestDTO) *model.GetPostBy
 	}
 
 	// 获取帖子
-	posts, err := b.postRepo.GetPostById(req.PostId)
+	repository := db.GetPostRepository()
+	posts, err := repository.GetPostById(req.PostId)
 	if err != nil {
 		resp.Code = model.InternalError
 		resp.Error = errors.New("获取帖子失败")
@@ -248,7 +268,7 @@ func GetPostContentByPostId() gin.HandlerFunc {
 			return
 		}
 
-		resp := postBizInstance.GetPostContentByPostId(&req)
+		resp := getPostContentByPostId(&req)
 		if resp.Code != model.Success {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": resp.Error.Error()})
 			return
@@ -258,7 +278,7 @@ func GetPostContentByPostId() gin.HandlerFunc {
 	}
 }
 
-func (b *PostBiz) GetPostContentByPostId(req *model.GetPostContentByPostIdRequestDTO) *model.GetPostContentByPostIdResponseDTO {
+func getPostContentByPostId(req *model.GetPostContentByPostIdRequestDTO) *model.GetPostContentByPostIdResponseDTO {
 	resp := &model.GetPostContentByPostIdResponseDTO{
 		BaseResp: model.BaseResp{
 			Code: model.Success,
@@ -282,4 +302,163 @@ func (b *PostBiz) GetPostContentByPostId(req *model.GetPostContentByPostIdReques
 
 	resp.Content = content
 	return resp
+}
+
+func Like() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		param := c.Param("postId")
+		postId, err := strconv.ParseInt(param, 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, model.BaseResp{Code: http.StatusBadRequest, ErrMsg: "invalid post ID", Error: err})
+			return
+		}
+
+		obj, _ := c.Get("user")
+		user := obj.(*model.UserDTO)
+
+		if err := updateLikeNum(postId, true, user.Id); err != nil {
+			c.JSON(http.StatusInternalServerError, model.BaseResp{Code: http.StatusInternalServerError, ErrMsg: "update like num failed", Error: err})
+			return
+		}
+		c.JSON(http.StatusOK, model.BaseResp{Code: http.StatusOK, ErrMsg: "success"})
+	}
+}
+
+func DisLike() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		param := c.Param("postId")
+		postId, err := strconv.ParseInt(param, 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, model.BaseResp{Code: http.StatusBadRequest, ErrMsg: "invalid post ID", Error: err})
+			return
+		}
+
+		obj, _ := c.Get("user")
+		user := obj.(*model.UserDTO)
+
+		if err := updateLikeNum(postId, false, user.Id); err != nil {
+			c.JSON(http.StatusInternalServerError, model.BaseResp{Code: http.StatusInternalServerError, ErrMsg: "update like num failed", Error: err})
+			return
+		}
+		c.JSON(http.StatusOK, model.BaseResp{Code: http.StatusOK, ErrMsg: "success"})
+	}
+}
+
+func updateLikeNum(postId int64, like bool, userId int64) error {
+	repository := db.GetPostRepository()
+	posts, err := repository.GetPostById([]int64{postId})
+	if err != nil {
+		return err
+	}
+	if len(posts) != 1 {
+		return err
+	}
+
+	post := posts[0]
+	if like {
+		post.LikeUserIds = append(post.LikeUserIds, userId)
+	} else {
+		post.UnlikeUserIds = append(post.UnlikeUserIds, userId)
+	}
+	if err = repository.UpdatePost(post); err != nil {
+		return err
+	}
+	return nil
+}
+
+func CreateComment() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		postIdStr := c.Param("postId")
+		postId, err := strconv.ParseInt(postIdStr, 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, model.BaseResp{Code: http.StatusBadRequest, ErrMsg: "invalid post ID", Error: err})
+			return
+		}
+
+		obj, exists := c.Get("user")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, model.BaseResp{Code: http.StatusUnauthorized, ErrMsg: "unauthorized", Error: errors.New("unauthorized")})
+			return
+		}
+		user, _ := obj.(*model.UserDTO)
+
+		var req model.CreatePostCommentReq
+
+		if err = c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, model.BaseResp{Code: http.StatusBadRequest, ErrMsg: "invalid request body", Error: err})
+			return
+		}
+
+		repository := db.GetPostRepository()
+		if err = repository.CreatePostComment(user, postId, req.Content); err != nil {
+			c.JSON(http.StatusInternalServerError, model.BaseResp{Code: http.StatusInternalServerError, ErrMsg: "failed to create comment", Error: err})
+			return
+		} else {
+			c.JSON(http.StatusOK, model.BaseResp{Code: http.StatusOK, ErrMsg: "success"})
+		}
+	}
+}
+
+func LikeComment() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		idStr := c.Param("commentId")
+		id, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, model.BaseResp{Code: http.StatusBadRequest, ErrMsg: "invalid comment ID", Error: err})
+			return
+		}
+
+		obj, _ := c.Get("user")
+		user := obj.(*model.UserDTO)
+
+		if err = updateCommentLikeNum(id, true, user.Id); err != nil {
+			c.JSON(http.StatusInternalServerError, model.BaseResp{Code: http.StatusInternalServerError, ErrMsg: err.Error(), Error: err})
+			return
+		} else {
+			c.JSON(http.StatusOK, model.BaseResp{Code: http.StatusOK, ErrMsg: "success"})
+		}
+	}
+}
+
+func DisLikeComment() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		idStr := c.Param("commentId")
+		id, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, model.BaseResp{Code: http.StatusBadRequest, ErrMsg: "invalid comment ID", Error: err})
+			return
+		}
+
+		obj, _ := c.Get("user")
+		user := obj.(*model.UserDTO)
+
+		if err = updateCommentLikeNum(id, false, user.Id); err != nil {
+			c.JSON(http.StatusInternalServerError, model.BaseResp{Code: http.StatusInternalServerError, ErrMsg: err.Error(), Error: err})
+			return
+		} else {
+			c.JSON(http.StatusOK, model.BaseResp{Code: http.StatusOK, ErrMsg: "success"})
+		}
+	}
+}
+
+func updateCommentLikeNum(commentId int64, like bool, userId int64) error {
+	repository := db.GetPostRepository()
+	comments, err := repository.BatchGetPostCommentById([]int64{commentId})
+	if err != nil {
+		return err
+	}
+	if len(comments) != 1 {
+		return errors.New("comment not found")
+	}
+
+	comment := comments[0]
+	if like {
+		comment.LikeUserIds = append(comment.LikeUserIds, userId)
+	} else {
+		comment.DislikeUserIds = append(comment.DislikeUserIds, userId)
+	}
+	if err = repository.UpdateComment(comment); err != nil {
+		return err
+	}
+	return nil
 }
