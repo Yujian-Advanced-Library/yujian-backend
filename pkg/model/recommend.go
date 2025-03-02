@@ -16,6 +16,10 @@ type UserRecommendRecordDTO struct {
 	KeyWords []string `json:"key_words"`
 }
 
+func (u UserRecommendRecordDO) TableName() string {
+	return "user_recommend"
+}
+
 func (u *UserRecommendRecordDTO) Convert2DO() *UserRecommendRecordDO {
 	categoryStr, _ := json.Marshal(u.Category)
 	keyWordsStr, _ := json.Marshal(u.KeyWords)
@@ -37,7 +41,21 @@ func (u *UserRecommendRecordDO) Convert2DTO() *UserRecommendRecordDTO {
 	return dto
 }
 
+type BaseRecommendRequest struct {
+	Page     int `json:"page"`
+	PageSize int `json:"page_size"`
+}
+
 type RecommendResponse struct {
 	BaseResp
 	Books []*BookInfoDTO `json:"books"`
+}
+
+type RecommendPersonalRequest struct {
+	BaseRecommendRequest
+}
+
+type RecommendHotRequest struct {
+	Topic string `json:"topic"`
+	BaseRecommendRequest
 }

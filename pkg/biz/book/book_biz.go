@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
+	"yujian-backend/pkg/biz/recommend"
 	"yujian-backend/pkg/db"
 	"yujian-backend/pkg/model"
 )
@@ -43,6 +44,16 @@ func SearchBooks() func(c *gin.Context) {
 				Books: nil,
 			})
 			return
+		}
+		if value, exists := c.Get("user"); exists {
+			user, _ := value.(*model.UserDTO)
+			if len(books) != 0 {
+				go func() {
+					for _, book := range books {
+						recommend.RecordUserAction(user, book.Id, book.Name, book.Category, req.Keyword, req.Category)
+					}
+				}()
+			}
 		}
 		c.JSON(http.StatusOK, model.SearchResponse{
 			BaseResp: model.BaseResp{
@@ -86,6 +97,12 @@ func GetBookDetail() func(c *gin.Context) {
 				Data: model.BookInfoDTO{},
 			})
 			return
+		}
+		if value, exists := c.Get("user"); exists {
+			user, _ := value.(*model.UserDTO)
+			go func() {
+				recommend.RecordUserAction(user, bookDTO.Id, bookDTO.Name, bookDTO.Category)
+			}()
 		}
 		// 找到
 		c.JSON(http.StatusOK, model.BookDetailResponse{

@@ -121,9 +121,10 @@ func (r *BookRepository) SearchBooks(keyword, category string, page, pageSize in
 	return bookDTOs, nil
 }
 
-func (r *BookRepository) RandomQuery(cnt int) ([]*model.BookInfoDTO, error) {
+func (r *BookRepository) RandomQuery(page, size int) ([]*model.BookInfoDTO, error) {
 	var bookDOs []*model.BookInfoDO
-	if err := r.DB.Limit(cnt).Find(&bookDOs).Error; err != nil {
+	offset := (page - 1) * size
+	if err := r.DB.Limit(size).Offset(offset).Find(&bookDOs).Error; err != nil {
 		log.GetLogger().Warnf("failed to search books in DB: %v", err)
 		return nil, err
 	}
@@ -134,7 +135,7 @@ func (r *BookRepository) RandomQuery(cnt int) ([]*model.BookInfoDTO, error) {
 	return bookDTOs, nil
 }
 
-func (r *BookRepository) SearchBooksWithScore(keyword string, fields ...string) ([]*model.BookInfoDTO, error) {
+func (r *BookRepository) SearchBooksWithScore(keyword string, page, size int, fields ...string) ([]*model.BookInfoDTO, error) {
 	var esConditions []model.Condition
 	for _, field := range fields {
 		esConditions = append(esConditions, model.Condition{
@@ -145,8 +146,8 @@ func (r *BookRepository) SearchBooksWithScore(keyword string, fields ...string) 
 	condition := model.EsQueryCondition{
 		Conditions:         esConditions,
 		MinimumShouldMatch: 1,
-		From:               0,
-		Size:               100,
+		From:               (page - 1) * size,
+		Size:               size,
 	}
 
 	if books, err := es.SearchArticlesWithScores[model.BookInfoES](context.Background(), "book", condition); err != nil {

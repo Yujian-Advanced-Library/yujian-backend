@@ -37,8 +37,8 @@ func SetupRouter(r *gin.Engine) {
 		reviewsGroup.POST("/post", book.CreatReview())  //书评发布接口
 		reviewsGroup.GET("/:bookId", book.GetReviews()) //书评获取接口
 
-		reviewsGroup.POST("/:reviewId/like", book.ClickLike())    //书评点赞接口
-		reviewsGroup.POST("/:reviewId/dislike", book.ClickLike()) //书评点踩接口
+		reviewsGroup.POST("/:reviewId/like", book.ClickLike())      //书评点赞接口
+		reviewsGroup.POST("/:reviewId/dislike", book.ClickUnlike()) //书评点踩接口
 	}
 
 	posts := r.Group("/api/forum")

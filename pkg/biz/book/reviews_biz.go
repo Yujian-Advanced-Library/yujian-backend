@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	"yujian-backend/pkg/biz/recommend"
 	"yujian-backend/pkg/db"
 	"yujian-backend/pkg/model"
 )
@@ -12,6 +13,19 @@ import (
 // CreatReview 书评发布
 func CreatReview() func(c *gin.Context) {
 	return func(c *gin.Context) {
+		value, exists := c.Get("user")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, model.CreatReviewResponse{
+				BaseResp: model.BaseResp{
+					Error:  nil,
+					Code:   http.StatusUnauthorized,
+					ErrMsg: "unauthorized",
+				},
+			})
+			return
+		}
+		user, _ := value.(*model.UserDTO)
+
 		//实例
 		reviewsRepository := db.GetBookRepository()
 		//解析请求体
@@ -31,7 +45,7 @@ func CreatReview() func(c *gin.Context) {
 			Content:     ReviewRequest.Content,
 			BookId:      ReviewRequest.BookId,
 			Score:       ReviewRequest.Score,
-			PublisherId: 1,
+			PublisherId: user.Id,
 			PostTime:    time.Now(),
 		}
 		// CreateBookComment 创建书评
@@ -45,6 +59,10 @@ func CreatReview() func(c *gin.Context) {
 			})
 			return
 		}
+		go func() {
+			recommend.RecordUserAction(user, ReviewRequest.BookId)
+		}()
+
 		c.JSON(http.StatusOK, model.CreatReviewResponse{
 			BaseResp: model.BaseResp{
 				Error:  nil,
@@ -160,6 +178,14 @@ func updateClick(c *gin.Context, like bool) {
 		})
 		return
 	}
+
+	if value, exists := c.Get("user"); exists {
+		user, _ := value.(*model.UserDTO)
+		go func() {
+			recommend.RecordUserAction(user, ReviewDTO.BookId)
+		}()
+	}
+
 	//成功
 	c.JSON(http.StatusOK, model.ClickLikeResponse{
 		BaseResp: model.BaseResp{
