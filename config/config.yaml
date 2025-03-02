@@ -3,10 +3,28 @@ app:
   version: "1.0.0"
 
 server:
-  host: "localhost"
   port: 8080
 
-database:
-  user: "admin"
-  password: "password123"
-  name: "demo_db"
+db:
+  host: "127.0.0.1"
+  port: 3306
+  username: "root"
+  password: "123"
+  dbname: "demo_db"
+  params: "charset=utf8mb4&parseTime=True&loc=Local"
+
+log:
+  filename: "demo.log"
+  errFilename: "demo_err.log"
+  loglevel: "debug"
+
+es:
+  addresses: ["http://localhost:9200"]
+  username: "elastic"
+  password: "uVHMRkMe"
+  apikey: "NTRUNVZaVUJUVlROZldIRWlBbFc6WExSNzhGTVBUTnlNMWRtQkplT0JqUQ=="
+
+minio:
+  endpoint: "http://127.0.0.1:9000"
+  accessKeyID: "minioadmin"
+  secretAccessKey: "minioadmin"

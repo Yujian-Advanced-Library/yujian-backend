@@ -8,10 +8,16 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"yujian-backend/pkg/config"
+	"yujian-backend/pkg/db"
+	"yujian-backend/pkg/es"
 	mylog "yujian-backend/pkg/log"
 )
 
 func main() {
+	// init
+	config.InitConfig()
+
 	// 创建日志
 	logger := mylog.GetLogger()
 	defer func(logger *zap.SugaredLogger) {
@@ -20,6 +26,9 @@ func main() {
 			log.Fatalf("failed to sync logger: %s", err)
 		}
 	}(logger)
+
+	db.InitDB()
+	es.InitESClient()
 
 	// 启动app
 	r := gin.Default()

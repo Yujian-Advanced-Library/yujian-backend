@@ -32,6 +32,10 @@ type BookInfoDO struct {
 	Category    string  `json:"Category"` //分类
 }
 
+func (b BookInfoDO) TableName() string {
+	return "book_info"
+}
+
 // TransformToDTO 将BookInfoDO转换为BookInfoDTO
 func (bookInfoDO *BookInfoDO) Transfer() *BookInfoDTO {
 	return &BookInfoDTO{
@@ -106,6 +110,10 @@ type BookCommentDO struct {
 	PostTime    time.Time `gorm:"column:post_time" json:"post_time"`
 	Like        int64     `gorm:"column:like" json:"like"`
 	Dislike     int64     `gorm:"column:dislike" json:"dislike"`
+}
+
+func (b BookCommentDO) TableName() string {
+	return "book_comment"
 }
 
 // TransformToDO 将BookCommentDTO转换为BookCommentDO

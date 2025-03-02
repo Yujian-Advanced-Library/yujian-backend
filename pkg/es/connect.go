@@ -21,7 +21,8 @@ func InitESClient() {
 	if err != nil {
 		log.GetLogger().Error("创建ES客户端失败: %v", err)
 		return
+	} else {
+		log.GetLogger().Info("创建ES客户端成功")
+		esClient = client
 	}
-
-	esClient = client
 }

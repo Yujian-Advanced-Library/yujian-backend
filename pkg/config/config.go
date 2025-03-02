@@ -1,9 +1,9 @@
 package config
 
 import (
-	"log" // use default log before we init logger
-
 	"github.com/spf13/viper"
+	"log" // use default log before we init logger
+	"runtime/debug"
 
 	"yujian-backend/pkg/model"
 )
@@ -14,22 +14,23 @@ var Config model.AppConfig
 func initDBConfig() {
 	dbConfig := Config.DB
 	dbConfig.Host = viper.GetString("db.host")
+	dbConfig.Port = viper.GetInt("db.port")
 	dbConfig.UserName = viper.GetString("db.username")
 	dbConfig.PassWord = viper.GetString("db.password")
 	dbConfig.DBName = viper.GetString("db.dbname")
-	dbConfig.Charset = viper.GetString("db.charset")
-	dbConfig.TimeZone = viper.GetString("db.timezone")
+	dbConfig.Params = viper.GetString("db.params")
 }
 
 func initLogConfig() {
 	logConfig := Config.Log
 	logConfig.FileName = viper.GetString("log.filename")
+	logConfig.ErrFileName = viper.GetString("log.errFilename")
 	logConfig.LogLevel = viper.GetString("log.loglevel")
 }
 
 func initServerConfig() {
 	serverConfig := Config.Server
-	serverConfig.Port = viper.GetString("server.port")
+	serverConfig.Port = viper.GetInt("server.port")
 }
 
 func initESConfig() {
@@ -40,6 +41,20 @@ func initESConfig() {
 }
 
 func InitConfig() {
+	defer func() {
+		if r := recover(); r != nil {
+			debug.PrintStack()
+			log.Fatalf("Init Config failed. Recovered from panic: %v\n", r)
+		}
+	}()
+
+	Config = model.AppConfig{
+		DB:     &model.DBConfig{},
+		ES:     &model.ESConfig{},
+		Log:    &model.LogConfig{},
+		Server: &model.ServerConfig{},
+	}
+
 	// 初始化 viper
 	viper.SetConfigName("config")  // 配置文件名称（不带扩展名）
 	viper.SetConfigType("yaml")    // 配置文件类型
@@ -55,7 +70,13 @@ func InitConfig() {
 
 	initDBConfig()
 
+	initESConfig()
+
 	initLogConfig()
 
 	initServerConfig()
+
+	for _, v := range viper.AllKeys() {
+		log.Printf("%s = %v\n", v, viper.Get(v))
+	}
 }

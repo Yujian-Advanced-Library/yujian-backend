@@ -1,29 +1,33 @@
 package model
 
+import "strconv"
+
 type DBConfig struct {
 	UserName string
 	PassWord string
 	Host     string
+	Port     int
 	DBName   string
-	Charset  string
-	TimeZone string
+	Params   string
 }
 
 // CreateDsn 生成数据库连接字符串。
 func (config *DBConfig) CreateDsn() string {
-	// 该方法根据DBConfig结构体中的配置信息，构造并返回一个数据库连接字符串。
-	// 这个连接字符串可以用于建立与数据库的连接。
-	// todo[ruibo]
-	return ""
+	dsn := config.UserName + ":" + config.PassWord + "@tcp(" + config.Host + ":" + strconv.Itoa(config.Port) + ")/" + config.DBName
+	if len(config.Params) > 0 {
+		dsn += "?" + config.Params
+	}
+	return dsn
 }
 
 type LogConfig struct {
-	FileName string // 日志文件名
-	LogLevel string // 日志级别
+	FileName    string // 日志文件名
+	ErrFileName string // 日志文件名
+	LogLevel    string // 日志级别
 }
 
 type ServerConfig struct {
-	Port string
+	Port int
 }
 
 type ESConfig struct {

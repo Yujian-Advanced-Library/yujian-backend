@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"yujian-backend/pkg/biz/auth"
 	"yujian-backend/pkg/biz/book"
+	"yujian-backend/pkg/biz/file"
 	"yujian-backend/pkg/biz/post"
 	"yujian-backend/pkg/biz/recommend"
 	"yujian-backend/pkg/biz/user"
@@ -61,4 +62,10 @@ func SetupRouter(r *gin.Engine) {
 		recom.GET("/topic", recommend.Topic())
 		recom.GET("/hot", recommend.Hot())
 	}
+
+	image := r.Group("/image")
+	{
+		image.GET("/:imageId", file.FetchFile())
+	}
+
 }

@@ -16,6 +16,10 @@ type UserDO struct {
 	Password string `json:"password"`
 }
 
+func (userDO UserDO) TableName() string {
+	return "user"
+}
+
 func (userDTO *UserDTO) Transfer() *UserDO {
 	return &UserDO{
 		Id:       userDTO.Id,
